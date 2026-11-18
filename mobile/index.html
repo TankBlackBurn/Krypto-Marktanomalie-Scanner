@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#161826">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sniper">
+<link rel="manifest" href="/manifest.json">
+<title>Sniper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Nocturne tokens, lifted from the design mockup so the two stay in step. */
+:root{
+  --bg:#161826; --surface:#232532; --text:#e9e9ed;
+  --accent:#9184d9; --accent-300:#d2cefd; --accent-600:#796cbf; --accent-900:#2b2741;
+  --n400:#b2b6ca; --n500:#9397ab; --n600:#75798c; --n700:#595d6c; --n800:#3f424d;
+  /* Nocturne carries no red. A dusty rose keeps losses legible at a glance
+     without breaking the cool register the rest of the palette sits in. */
+  --loss:#c4787f;
+  --muted:color-mix(in srgb, #e9e9ed 42%, transparent);
+  --dim:color-mix(in srgb, #e9e9ed 70%, transparent);
+  --divider:color-mix(in srgb, #e9e9ed 16%, transparent);
+  --body:'Inter',system-ui,-apple-system,sans-serif;
+  --mono:ui-monospace,'SF Mono',Menlo,monospace;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--body);
+  font-size:15px;line-height:1.45;letter-spacing:-.01em;
+  padding-bottom:calc(74px + var(--safe-b));-webkit-font-smoothing:antialiased;
+}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow{
+  font-size:12px;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.02em;padding:0 4px 8px;display:block;
+}
+.pos{color:var(--accent-300)}.neg{color:var(--loss)}.idle{color:var(--muted)}
+
+/* ── header ─────────────────────────────────────────── */
+header{
+  position:sticky;top:0;z-index:40;background:rgba(22,24,38,.92);
+  backdrop-filter:blur(14px);border-bottom:1px solid var(--divider);
+  padding:calc(env(safe-area-inset-top,0px) + 14px) 20px 12px;
+}
+.h-top{display:flex;align-items:center;gap:12px}
+.h-top h1{font-size:19px;font-weight:600;letter-spacing:-.02em;flex:1}
+.beat{display:flex;align-items:flex-end;gap:2.5px;height:18px}
+.beat i{width:3px;border-radius:1px;background:color-mix(in srgb,#e9e9ed 22%,transparent);
+  transition:height .4s ease}
+.beat i.now{background:var(--accent)}
+.h-sub{font-size:12.5px;color:var(--muted);margin-top:5px}
+#refresh{
+  background:none;border:0;padding:6px;cursor:pointer;color:var(--muted);
+  display:flex;line-height:0;
+}
+#refresh:active{color:var(--accent)}
+#refresh.busy svg{animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+main{padding:18px 16px 32px;max-width:560px;margin:0 auto}
+.panel{display:none}.panel.on{display:block}
+section{margin-bottom:26px}
+
+/* ── filter pills ───────────────────────────────────── */
+.pills{display:flex;gap:8px;overflow-x:auto;padding:0 4px 16px;scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pill{
+  flex:none;border-radius:99px;padding:7px 14px;font-size:13px;cursor:pointer;
+  background:transparent;border:1px solid color-mix(in srgb,#e9e9ed 14%,transparent);
+  color:var(--muted);white-space:nowrap;font-family:var(--body);
+}
+.pill.on{background:color-mix(in srgb,#9184d9 18%,transparent);
+  border-color:var(--accent);color:var(--text)}
+.pill b{font-weight:500;opacity:.6;margin-left:3px}
+
+/* ── stacked signal deck ────────────────────────────── */
+.deck{padding:0 2px}
+.scard{
+  background:var(--surface);border-radius:18px;padding:16px;
+  position:relative;cursor:pointer;
+  transition:margin .3s cubic-bezier(.2,.8,.3,1),box-shadow .3s ease;
+  box-shadow:0 0 0 1px var(--n800),0 -6px 16px rgba(0,0,0,.35);
+}
+.scard.open{
+  box-shadow:0 0 0 1px color-mix(in srgb,#9184d9 40%,transparent),
+             0 12px 30px rgba(0,0,0,.55);
+}
+.sc-head{display:flex;align-items:center;gap:12px}
+.sc-id{flex:1;min-width:0}
+.pair{font-size:19px;font-weight:600;letter-spacing:-.02em;transition:font-size .25s ease}
+.scard.open .pair{font-size:26px}
+.sc-line{font-size:12.5px;color:var(--muted);margin-top:2px}
+.tag{
+  font-size:11px;padding:4px 9px;border-radius:99px;white-space:nowrap;
+  border:1px solid color-mix(in srgb,#e9e9ed 14%,transparent);color:var(--muted);
+}
+.tag.win{background:color-mix(in srgb,#9184d9 20%,transparent);
+  border-color:transparent;color:var(--accent-300)}
+.tag.live{border-color:var(--accent);color:var(--accent-300)}
+.chev{color:var(--muted);flex:none;transition:transform .25s ease}
+.scard.open .chev{transform:rotate(180deg)}
+
+.sc-body{display:none;margin-top:18px}
+.scard.open .sc-body{display:block}
+
+/* score arc — circumference of r=32 is 201, matching the mockup */
+.arc-row{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+.arc{position:relative;width:76px;height:76px;flex:none}
+.arc svg{transform:rotate(-90deg)}
+.arc .val{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+.arc .val b{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:-.03em}
+.arc .val span{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.arc-note{font-size:13px;line-height:1.5;color:var(--dim)}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+.chip{
+  display:flex;align-items:center;gap:5px;font-size:12px;padding:6px 10px;
+  border-radius:99px;border:1px solid color-mix(in srgb,#e9e9ed 14%,transparent);
+  color:var(--muted);font-family:var(--mono);
+}
+.chip.hit{border-color:color-mix(in srgb,#9184d9 45%,transparent);color:var(--dim)}
+.chip svg{flex:none;opacity:.8}
+
+.rows{border-top:1px solid var(--divider)}
+.row{
+  display:flex;justify-content:space-between;align-items:baseline;gap:14px;
+  padding:10px 0;border-bottom:1px solid var(--divider);
+}
+.row .k{font-size:13px;color:var(--muted)}
+.row .k small{display:block;font-size:11px;color:color-mix(in srgb,#e9e9ed 30%,transparent)}
+.row .v{font-family:var(--mono);font-size:13.5px;white-space:nowrap}
+
+.why{
+  margin-top:14px;background:var(--bg);border-radius:12px;padding:13px 14px;
+  font-size:13px;line-height:1.6;color:var(--dim);
+}
+.why b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--muted);margin-bottom:6px;font-weight:500}
+
+/* ── expectancy band (the one number that matters) ──── */
+.card{background:var(--surface);border-radius:18px;padding:18px;
+  box-shadow:0 0 0 1px var(--n800)}
+.big{display:flex;align-items:baseline;gap:10px}
+.big b{font-family:var(--mono);font-size:42px;font-weight:600;letter-spacing:-.04em;line-height:1}
+.big span{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.big-sub{font-size:12.5px;color:var(--muted);margin:6px 0 24px}
+.band{position:relative;height:56px}
+.band .track{position:absolute;left:0;right:0;top:26px;height:5px;
+  background:color-mix(in srgb,#e9e9ed 9%,transparent);border-radius:3px}
+.band .bar{position:absolute;top:26px;height:5px;border-radius:3px;
+  transition:left .6s cubic-bezier(.2,.8,.3,1),width .6s cubic-bezier(.2,.8,.3,1)}
+.bar.good{background:var(--accent)}
+.bar.bad{background:var(--loss)}
+.bar.none{
+  background:repeating-linear-gradient(115deg,var(--n700) 0 3px,transparent 3px 7px);
+  outline:1px solid var(--n700);outline-offset:-1px;
+}
+.band .zero{position:absolute;top:13px;bottom:13px;width:1px;
+  background:color-mix(in srgb,#e9e9ed 45%,transparent)}
+.band .zero::after{content:'0';position:absolute;top:-14px;left:50%;
+  transform:translateX(-50%);font-family:var(--mono);font-size:9.5px;color:var(--muted)}
+.band .tick{position:absolute;top:19px;width:2px;height:19px;background:var(--text);border-radius:1px}
+.ends{display:flex;justify-content:space-between;font-family:var(--mono);
+  font-size:11.5px;color:var(--muted)}
+.read{margin-top:16px;padding-top:14px;border-top:1px solid var(--divider);
+  font-size:13px;line-height:1.55;color:var(--dim)}
+.read b{font-weight:600;color:var(--text)}
+.read b.q{color:var(--muted)}
+
+/* ── history ────────────────────────────────────────── */
+.day{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+  padding:16px 4px 7px}
+.hrow{display:flex;align-items:center;gap:12px;padding:11px 4px;
+  border-bottom:1px solid var(--divider)}
+.hrow .t{font-family:var(--mono);font-size:12px;color:var(--muted);width:42px;flex:none}
+.hrow .p{flex:1;font-size:14px;font-weight:500;min-width:0}
+.hrow .r{font-family:var(--mono);font-size:13.5px;font-weight:600}
+
+/* ── meters ─────────────────────────────────────────── */
+.meter{height:4px;background:color-mix(in srgb,#e9e9ed 10%,transparent);
+  border-radius:99px;overflow:hidden;margin:9px 0 6px}
+.meter i{display:block;height:100%;background:var(--accent-600);border-radius:99px;
+  transition:width .5s ease}
+.meter i.full{background:var(--accent)}
+.sub{font-family:var(--mono);font-size:11.5px;color:var(--muted);
+  display:flex;justify-content:space-between}
+
+/* ── tabs ───────────────────────────────────────────── */
+nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  background:rgba(22,24,38,.94);backdrop-filter:blur(14px);
+  border-top:1px solid var(--divider);display:flex;padding-bottom:var(--safe-b);
+}
+nav button{
+  flex:1;background:none;border:0;padding:10px 4px 11px;cursor:pointer;
+  color:var(--muted);font-family:var(--body);font-size:10.5px;position:relative;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+nav button.on{color:var(--accent)}
+nav .badge{position:absolute;top:8px;left:calc(50% + 9px);width:6px;height:6px;
+  border-radius:50%;background:var(--accent)}
+
+/* ── states ─────────────────────────────────────────── */
+.empty{padding:34px 14px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6}
+.empty b{display:block;color:var(--text);font-size:14.5px;font-weight:600;margin-bottom:6px}
+.err{background:color-mix(in srgb,#c4787f 12%,transparent);
+  border:1px solid color-mix(in srgb,#c4787f 35%,transparent);
+  color:var(--loss);padding:12px 14px;border-radius:12px;font-size:13px;margin-bottom:16px}
+#gate{padding:80px 28px;max-width:400px;margin:0 auto}
+#gate h2{font-size:21px;font-weight:600;margin-bottom:10px;letter-spacing:-.02em}
+#gate p{color:var(--muted);font-size:13.5px;line-height:1.6;margin-bottom:22px}
+#gate input{width:100%;background:var(--surface);border:1px solid var(--n800);
+  border-radius:12px;padding:13px;color:var(--text);font-family:var(--mono);
+  font-size:14px;margin-bottom:12px}
+#gate button{width:100%;background:var(--accent);border:0;border-radius:12px;
+  padding:13px;color:#161826;font-family:var(--body);font-size:14.5px;
+  font-weight:600;cursor:pointer}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div id="gate" hidden>
+  <h2>Connect to your bot</h2>
+  <p>Paste the token <span class="mono">api_server.py</span> printed on startup. It's also in <span class="mono">mobile_token.txt</span>.</p>
+  <input id="tok" type="text" placeholder="token" autocomplete="off" autocapitalize="off" spellcheck="false">
+  <button onclick="saveToken()">Connect</button>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <div class="h-top">
+      <h1>Sniper</h1>
+      <div class="beat" id="beat"></div>
+      <button id="refresh" onclick="loadAll()" aria-label="Refresh">
+        <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+          <path d="M17 10a7 7 0 1 1-2.05-4.95"/><path d="M17 3v4h-4"/>
+        </svg>
+      </button>
+    </div>
+    <div class="h-sub" id="hsub">connecting&hellip;</div>
+  </header>
+
+  <main>
+    <div id="err"></div>
+
+    <div class="panel on" id="p-now">
+      <div class="pills" id="pills"></div>
+      <div class="deck" id="deck"></div>
+    </div>
+
+    <div class="panel" id="p-record">
+      <section>
+        <span class="eyebrow">Live expectancy &middot; out of sample</span>
+        <div class="card" id="edge"></div>
+      </section>
+      <section id="s-score"></section>
+      <section id="s-ai"></section>
+      <section>
+        <span class="eyebrow">History</span>
+        <div id="history"></div>
+      </section>
+    </div>
+
+    <div class="panel" id="p-trades">
+      <section>
+        <span class="eyebrow">Open positions</span>
+        <div class="card" id="open"></div>
+      </section>
+      <section>
+        <span class="eyebrow">Closed</span>
+        <div class="card" id="closed"></div>
+      </section>
+    </div>
+
+    <div class="panel" id="p-setup">
+      <section>
+        <span class="eyebrow">Collectors</span>
+        <div class="card" id="collectors"></div>
+      </section>
+      <section>
+        <span class="eyebrow">Settings in force</span>
+        <div class="card" id="config"></div>
+      </section>
+    </div>
+  </main>
+
+  <nav id="nav"></nav>
+</div>
+
+<script>
+/* ── icons (inlined, so the phone needs no CDN) ── */
+const IC = {
+  crosshair:'<circle cx="12" cy="12" r="8"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5"/>',
+  chart:'<path d="M3 20h18"/><path d="M4 15l5-6 4 4 6-8"/>',
+  wallet:'<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M16 12.5h2"/>',
+  sliders:'<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+  check:'<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>',
+  minus:'<circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>',
+  caret:'<path d="M6 9l6 6 6-6"/>'
+};
+const icon = (k,s,w) => `<svg width="${s||20}" height="${s||20}" viewBox="0 0 24 24" fill="none"
+  stroke="currentColor" stroke-width="${w||1.7}" stroke-linecap="round" stroke-linejoin="round">${IC[k]}</svg>`;
+
+const $ = id => document.getElementById(id);
+
+/* ── token ── */
+const urlTok = new URLSearchParams(location.search).get('token');
+if(urlTok){ localStorage.setItem('sniper_token',urlTok); history.replaceState({},'',location.pathname); }
+let TOKEN = localStorage.getItem('sniper_token') || '';
+function saveToken(){
+  const v = $('tok').value.trim();
+  if(!v) return;
+  localStorage.setItem('sniper_token',v); TOKEN = v; boot();
+}
+function boot(){
+  $('gate').hidden = !!TOKEN; $('app').hidden = !TOKEN;
+  if(TOKEN) loadAll();
+}
+
+/* ── helpers ── */
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sgn = n => (n>=0?'+':'') + n.toFixed(2);
+const tone = n => n>0?'pos':(n<0?'neg':'idle');
+const px = n => n==null ? '—' : (Math.abs(n)>=1000 ? Math.round(n).toLocaleString()
+              : Math.abs(n)>=1 ? n.toFixed(3) : n.toPrecision(3));
+const hhmm = ts => ts ? new Date(ts*1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false}) : '--:--';
+
+function dayLabel(ts){
+  if(!ts) return '';
+  const d = new Date(ts*1000), n = new Date();
+  const same = (a,b) => a.toDateString() === b.toDateString();
+  if(same(d,n)) return 'Today';
+  const y = new Date(n); y.setDate(n.getDate()-1);
+  if(same(d,y)) return 'Yesterday';
+  return d.toLocaleDateString([], {month:'short', day:'numeric'});
+}
+function ago(ts){
+  if(!ts) return 'never';
+  const m = Math.floor((Date.now()/1000 - ts)/60);
+  if(m<1) return 'just now';
+  if(m<60) return m+'m ago';
+  const h = Math.floor(m/60);
+  return h<24 ? h+'h ago' : Math.floor(h/24)+'d ago';
+}
+const row = (k,v,sub,kl) => `<div class="row"><div class="k">${esc(k)}${sub?`<small>${esc(sub)}</small>`:''}</div>
+  <div class="v ${kl||''}">${v}</div></div>`;
+
+async function api(p){
+  const r = await fetch('/api'+p, {headers:{'x-token':TOKEN}});
+  if(r.status===401){ localStorage.removeItem('sniper_token'); TOKEN=''; boot();
+    throw new Error('Token rejected. Check mobile_token.txt.'); }
+  if(!r.ok) throw new Error('Server returned '+r.status);
+  return r.json();
+}
+
+/* ── state ── */
+let SIGS = [], FILTER = 'all', OPEN_ID = null;
+const isWin  = o => o==='TP1' || o==='TP2';
+const isLoss = o => o==='STOP';
+
+/* ── Now: filter pills + stacked deck ── */
+const FILTERS = [['all','All',()=>true],
+                 ['open','Open',s=>s.outcome==='PENDING'],
+                 ['won','Won',s=>isWin(s.outcome)],
+                 ['stopped','Stopped',s=>isLoss(s.outcome)]];
+
+function renderNow(){
+  $('pills').innerHTML = FILTERS.map(([k,l,f]) =>
+    `<button class="pill ${FILTER===k?'on':''}" data-f="${k}">${l}<b>${SIGS.filter(f).length}</b></button>`).join('');
+  $('pills').querySelectorAll('.pill').forEach(b => b.onclick = () => { FILTER = b.dataset.f; renderNow(); });
+
+  const shown = SIGS.filter(FILTERS.find(f => f[0]===FILTER)[2]);
+  if(!shown.length){
+    $('deck').innerHTML = `<div class="empty"><b>Nothing here</b>
+      ${FILTER==='all' ? 'main.py logs every setup, executed or not. A quiet market looks exactly like this.'
+                       : 'No signals with that outcome yet.'}</div>`;
+    return;
+  }
+  if(!shown.some(s => s.key === OPEN_ID)) OPEN_ID = shown[0].key;
+
+  $('deck').innerHTML = shown.map(card).join('');
+  $('deck').querySelectorAll('.scard').forEach(el => {
+    el.querySelector('.sc-head').onclick = () => {
+      OPEN_ID = OPEN_ID === el.dataset.k ? null : el.dataset.k;
+      renderNow();
+    };
+  });
+}
+
+function card(s,i){
+  const open = OPEN_ID === s.key;
+  const o = s.outcome || 'PENDING';
+  const cls = isWin(o) ? 'win' : o==='PENDING' ? 'live' : '';
+  const label = {TP1:'Target hit',TP2:'Target hit',STOP:'Stopped',PENDING:'Open',
+                 EXPIRED:'Expired',BLOCKED_FUNDING:'Funding block'}[o] || o;
+  const short = (s.signal_type||'').toLowerCase().includes('ramp') ? 'Ramp' : 'Breakout';
+  const score = s.confluence_score || 0;
+  const arcCol = score>=60 ? 'var(--accent)' : 'var(--n700)';
+  const verdict = score>=70 ? 'Strong — cleared the gate with room to spare'
+                : score>=60 ? 'Acceptable — clears the gate'
+                : 'Marginal — only just over the gate';
+
+  /* Every chip is a measured field from live_signals.db. Unlike the mockup,
+     none of these are invented point contributions. */
+  const chips = [
+    ['vel ' + (s.velocity||0).toFixed(1) + 'x', (s.velocity||0) >= 3.0],
+    ['buy ' + ((s.buy_pressure||0)*100).toFixed(0) + '%', (s.buy_pressure||0) >= 0.60],
+    ['ext +' + (s.extension_pct||0).toFixed(0) + '%', (s.extension_pct||0) <= 30],
+    ['stop ' + (s.sl_percent||0).toFixed(2) + '%', true],
+    ['AI ' + (s.ai_verdict||'—'), (s.ai_verdict||'') !== 'AVOID'],
+  ];
+
+  const offset = i===0 ? 0 : (open ? 12 : -10);
+
+  return `<div class="scard ${open?'open':''}" data-k="${esc(s.key)}"
+      style="margin-top:${offset}px;z-index:${open?30:10+(90-i)}">
+    <div class="sc-head">
+      <div class="sc-id">
+        <div class="pair">${esc(s.symbol)}</div>
+        <div class="sc-line">${short} &middot; ${hhmm(s.signalled_at)}${open?'':' &middot; score '+score.toFixed(0)}</div>
+      </div>
+      <span class="tag ${cls}">${label}</span>
+      <span class="chev">${icon('caret',18)}</span>
+    </div>
+    <div class="sc-body">
+      <div class="arc-row">
+        <div class="arc">
+          <svg width="76" height="76">
+            <circle cx="38" cy="38" r="32" fill="none" stroke-width="6"
+                    stroke="color-mix(in srgb,#e9e9ed 10%,transparent)"/>
+            <circle cx="38" cy="38" r="32" fill="none" stroke="${arcCol}" stroke-width="6"
+                    stroke-linecap="round" stroke-dasharray="${(score/100*201).toFixed(1)} 201"/>
+          </svg>
+          <div class="val"><b>${score.toFixed(0)}</b><span>score</span></div>
+        </div>
+        <div class="arc-note">${verdict}</div>
+      </div>
+      <div class="chips">${chips.map(c =>
+        `<span class="chip ${c[1]?'hit':''}">${icon(c[1]?'check':'minus',13,1.8)}${esc(c[0])}</span>`).join('')}</div>
+      <div class="rows">
+        ${row('Entry', px(s.entry_price))}
+        ${row('Stop', px(s.sl_price), (s.sl_percent||0).toFixed(2)+'% below entry')}
+        ${row('Targets', px(s.tp1_price)+' / '+px(s.tp2_price), 'TP1 / TP2')}
+        ${s.peak_gain_pct!=null ? row('Peak reached', sgn(s.peak_gain_pct)+'%',
+            'best price after entry', tone(s.peak_gain_pct)) : ''}
+        ${row('Funding', s.funding_rate==null?'—':(s.funding_rate*100).toFixed(4)+'%')}
+        ${row('Leverage', (s.suggested_leverage||'—')+'x', 'sized so the stop closes it')}
+        ${s.net_r!=null ? row('Net result', sgn(s.net_r)+'R', 'after 0.12% round trip', tone(s.net_r)) : ''}
+      </div>
+      <div class="why"><b>Why this fired</b>
+        Volume ran ${(s.velocity||0).toFixed(1)}x the 50-candle average with
+        ${((s.buy_pressure||0)*100).toFixed(0)}% of it aggressive buying.
+        Price sat ${(s.extension_pct||0).toFixed(0)}% above the lookback low at entry,
+        and the stop went ${(s.sl_percent||0).toFixed(2)}% below.
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── Record ── */
+function renderEdge(p){
+  const e = p.expectancy;
+  if(!e || !e.n){
+    $('edge').innerHTML = `<div class="empty"><b>Nothing resolved yet</b>
+      Signals need 2h to play out, then signal_tracker.py scores them.
+      ${p.pending||0} waiting.</div>`;
+    return;
+  }
+  if(e.lo == null){
+    $('edge').innerHTML = `<div class="big"><b class="${tone(e.mean)}">${sgn(e.mean)}</b><span>R</span></div>
+      <div class="big-sub">One resolved signal. No interval from a sample of one.</div>`;
+    return;
+  }
+  const lo = Math.min(e.lo,0), hi = Math.max(e.hi,0);
+  const pad = (hi-lo)*.14 || .1, d0 = lo-pad, span = (hi+pad)-d0;
+  const at = v => (v-d0)/span*100;
+  const k = e.verdict==='positive' ? 'good' : e.verdict==='negative' ? 'bad' : 'none';
+  const txt = {
+    positive:['Interval clears zero.','Real at this sample size. Keep collecting to confirm it holds.'],
+    negative:['Interval sits below zero.','This configuration is losing, not just unlucky.'],
+    spans_zero:['Interval spans zero.','Indistinguishable from no edge. More trades, not more tuning.']
+  }[e.verdict];
+
+  $('edge').innerHTML = `
+    <div class="big"><b class="${tone(e.mean)}">${sgn(e.mean)}</b><span>R mean &middot; n=${e.n}</span></div>
+    <div class="big-sub">Net of 0.12% round-trip cost, per resolved signal.</div>
+    <div class="band">
+      <div class="track"></div>
+      <div class="bar ${k}" style="left:${at(e.lo)}%;width:${at(e.hi)-at(e.lo)}%"></div>
+      <div class="zero" style="left:${at(0)}%"></div>
+      <div class="tick" style="left:calc(${at(e.mean)}% - 1px)"></div>
+    </div>
+    <div class="ends"><span>${sgn(e.lo)}R</span><span>95% interval</span><span>${sgn(e.hi)}R</span></div>
+    <div class="read"><b class="${k==='none'?'q':''}">${txt[0]}</b> ${txt[1]}
+      ${e.n<30 ? `<br><span style="color:var(--muted)">${e.n} of 30 — provisional either way.</span>`:''}</div>`;
+}
+
+function renderRecord(p){
+  renderEdge(p);
+
+  const s = p.score_split;
+  $('s-score').innerHTML = !s ? '' : `<span class="eyebrow">Does the score rank anything?</span>
+    <div class="card">
+      ${row('Lower half', sgn(s.low_mean)+'R', `scores ${s.low_range[0].toFixed(0)}–${s.low_range[1].toFixed(0)}`, tone(s.low_mean))}
+      ${row('Upper half', sgn(s.high_mean)+'R', `scores ${s.high_range[0].toFixed(0)}–${s.high_range[1].toFixed(0)}`, tone(s.high_mean))}
+      <div class="read"><b class="${s.delta>0?'':'q'}">${s.delta>0
+        ? 'Higher scores did better by '+s.delta.toFixed(2)+'R.'
+        : 'Higher scores did not do better.'}</b>${s.n<30?' Provisional at n='+s.n+'.':''}</div>
+    </div>`;
+
+  const ai = p.by_ai_verdict || {};
+  $('s-ai').innerHTML = !Object.keys(ai).length ? '' :
+    `<span class="eyebrow">AI verdict vs outcome &middot; advisory only</span>
+     <div class="card">${Object.entries(ai).map(([k,v]) =>
+       row(k, sgn(v.mean)+'R', 'n='+v.n, tone(v.mean))).join('')}</div>`;
+
+  let last = null;
+  const done = SIGS.filter(x => x.outcome && x.outcome!=='PENDING');
+  $('history').innerHTML = !done.length
+    ? `<div class="empty">No resolved signals yet.</div>`
+    : done.map(x => {
+        const d = dayLabel(x.signalled_at);
+        const head = d!==last ? `<div class="day">${d}</div>` : '';
+        last = d;
+        const short = (x.signal_type||'').toLowerCase().includes('ramp')?'Ramp':'Breakout';
+        return head + `<div class="hrow">
+          <span class="t">${hhmm(x.signalled_at)}</span>
+          <span class="p">${esc(x.symbol)}<span style="color:var(--muted);font-weight:400"> &middot; ${short}</span></span>
+          <span class="r ${x.net_r==null?'idle':tone(x.net_r)}">${x.net_r==null?'—':sgn(x.net_r)+'R'}</span>
+        </div>`;
+      }).join('');
+}
+
+/* ── Trades ── */
+function tradeRow(t){
+  const r = t.realized_r;
+  const won = (t.status||'').toUpperCase()==='WIN';
+  return `<div class="hrow">
+    <span class="p">${esc(t.symbol)}<span style="color:var(--muted);font-weight:400">
+      &middot; entry ${px(t.entry_price)}</span></span>
+    <span class="tag ${won?'win':''}">${esc(t.status||'')}</span>
+    <span class="r ${r==null?'idle':tone(r)}">${r==null?'—':sgn(r)+'R'}</span>
+  </div>`;
+}
+function renderTrades(d){
+  $('open').innerHTML = d.open.length ? d.open.map(tradeRow).join('')
+    : `<div class="empty"><b>Nothing open</b>
+       Expected while auto_execute_trades is off — the bot is signalling, not trading.</div>`;
+  const sm = d.summary;
+  $('closed').innerHTML = !d.closed.length ? `<div class="empty">No closed trades on record.</div>`
+    : `<div class="chips" style="margin-bottom:6px">
+         <span class="chip">closed ${sm.closed_count}</span>
+         <span class="chip hit">won ${sm.wins}</span>
+         <span class="chip">lost ${sm.losses}</span>
+         ${sm.realized?`<span class="chip hit">mean ${sgn(sm.realized.mean)}R</span>`:''}
+       </div>` + d.closed.map(tradeRow).join('');
+}
+
+/* ── Setup ── */
+function renderCollectors(c){
+  const blk = (name,d,need,note) => {
+    const pct = Math.min(100, d.hours/need*100);
+    return `<div style="margin-bottom:18px">
+      ${row(name, d.rows.toLocaleString()+' rows', note)}
+      <div class="meter"><i class="${pct>=100?'full':''}" style="width:${pct}%"></i></div>
+      <div class="sub"><span>${d.hours.toFixed(1)}h of ${need}h</span><span>last ${ago(d.last_seen)}</span></div>
+    </div>`;
+  };
+  $('collectors').innerHTML =
+    blk('Order book depth', c.depth, c.thresholds.depth_hours, c.depth.symbols+' symbols · depth_test.py') +
+    blk('CoinGecko trending', c.trending, c.thresholds.hype_hours, 'hype_test.py') +
+    blk('/biz/ mentions', c.biz, c.thresholds.hype_hours, 'hype_test.py') +
+    ((c.depth.thinnest && c.depth.thinnest.length)
+      ? `<span class="eyebrow" style="padding-top:8px">Thinnest books seen</span>` +
+        c.depth.thinnest.map(t => row(t.symbol,'$'+Math.round(t.v).toLocaleString(),'to move 2%')).join('')
+      : '');
+}
+function renderConfig(c){
+  const b = c.bot_settings || {};
+  const keys = ['auto_execute_trades','execute_score','min_score','margin_per_trade_usd',
+    'leverage','max_open_trades','scan_interval_seconds','min_sl_percent',
+    'max_sl_percent','max_extension_pct','min_volume_usd'];
+  $('config').innerHTML = keys.filter(k => k in b).map(k => {
+    let v = b[k];
+    if(typeof v==='boolean') v = v?'on':'off';
+    else if(typeof v==='number' && v>=10000) v = v.toLocaleString();
+    return row(k.replace(/_/g,' '), esc(v),
+      k==='auto_execute_trades' ? 'live order placement':'',
+      k==='auto_execute_trades' ? (b[k]?'pos':'idle') : '');
+  }).join('') + `<div class="read"><b class="q">Read-only.</b>
+    Change these in config.json on the PC and restart main.py.</div>`;
+}
+
+/* ── heartbeat: real signal counts per hour, last 12h ── */
+function renderBeat(){
+  const now = Math.floor(Date.now()/1000), b = new Array(12).fill(0);
+  SIGS.forEach(s => {
+    const h = Math.floor((now - (s.signalled_at||0))/3600);
+    if(h>=0 && h<12) b[11-h]++;
+  });
+  const max = Math.max(1, ...b);
+  $('beat').innerHTML = b.map((v,i) =>
+    `<i class="${i===11?'now':''}" style="height:${Math.max(3, v/max*18)}px"></i>`).join('');
+}
+
+/* ── tabs ── */
+const TABS = [['now','Now','crosshair'],['record','Record','chart'],
+              ['trades','Trades','wallet'],['setup','Setup','sliders']];
+let TAB = 'now', PENDING = 0;
+function renderTabs(){
+  $('nav').innerHTML = TABS.map(([k,l,ic]) =>
+    `<button class="${TAB===k?'on':''}" data-t="${k}">${icon(ic,21,TAB===k?2:1.6)}
+      <span>${l}</span>${k==='now'&&PENDING?'<span class="badge"></span>':''}</button>`).join('');
+  $('nav').querySelectorAll('button').forEach(b => b.onclick = () => {
+    TAB = b.dataset.t;
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id==='p-'+TAB));
+    renderTabs(); window.scrollTo(0,0);
+  });
+}
+
+/* ── load ── */
+let busy = false;
+async function loadAll(){
+  if(busy) return;
+  busy = true; $('refresh').classList.add('busy'); $('err').innerHTML='';
+  try{
+    const [h,s,p,t,c,cfg] = await Promise.all([
+      api('/health'),api('/signals'),api('/performance'),
+      api('/trades'),api('/collectors'),api('/config')]);
+
+    SIGS = s.signals.map((x,i) => Object.assign(x, {key:(x.symbol||'?')+'-'+(x.signalled_at||i)}));
+    PENDING = h.pending;
+
+    const today = SIGS.filter(x => dayLabel(x.signalled_at)==='Today').length;
+    const mins = h.last_signal_at ? (Date.now()/1000 - h.last_signal_at)/60 : 1e9;
+    $('hsub').textContent = `${h.pending} open · ${today} today · ` +
+      (mins < 180 ? 'scanning' : 'last signal ' + ago(h.last_signal_at));
+
+    renderBeat(); renderNow(); renderRecord(p); renderTrades(t);
+    renderCollectors(c); renderConfig(cfg); renderTabs();
+  }catch(e){
+    $('err').innerHTML = `<div class="err">${esc(e.message)}<br>
+      Check api_server.py is running and your phone is on the same network.</div>`;
+  }
+  busy = false; $('refresh').classList.remove('busy');
+}
+
+renderTabs();
+setInterval(() => { if(TOKEN && !document.hidden) loadAll(); }, 45000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden && TOKEN) loadAll(); });
+boot();
+</script>
+</body>
+</html>
