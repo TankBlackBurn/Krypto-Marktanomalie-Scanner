@@ -1,0 +1,20 @@
+# Secrets -- never commit these
+config.json
+.env
+mobile_token.txt
+
+# Local data
+db/
+*.db
+*.sqlite
+*.sqlite3
+
+# Python / environment
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Logs
+logs/
+*.log

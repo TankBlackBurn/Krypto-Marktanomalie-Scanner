@@ -1,0 +1,27 @@
+{
+  "api_credentials": {
+    "weex_api_key": "your_weex_api_key",
+    "weex_secret_key": "your_weex_secret_key",
+    "weex_api_passphrase": "your_weex_passphrase",
+    "telegram_bot_token": "your_telegram_bot_token",
+    "telegram_chat_id": "your_telegram_chat_id",
+    "anthropic_api_key": "your_anthropic_api_key"
+  },
+  "bot_settings": {
+    "interval": "15m",
+    "candle_limit": 100,
+    "scan_interval_seconds": 30,
+    "min_confluence_score": 60,
+    "execute_score": 75,
+    "symbol_cooldown_candles": 8,
+    "auto_execute_trades": false,
+    "margin_per_trade_usd": 2.0,
+    "leverage": 10,
+    "max_open_trades": 3,
+    "exit_mode": "trailing",
+    "ai_mode": "advisory",
+    "ai_model": "claude-haiku-4-5",
+    "ai_timeout_seconds": 20,
+    "funding_mode": "advisory"
+  }
+}
